@@ -14,10 +14,8 @@ func (pp *PublicParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381
 	if len(a) != len(b) {
 		panic("length of a and b must be equal")
 	}
-	if len(a)&1 != 0 {
-		panic("length of a and b must be even")
-	}
-	if (len(a)>>1)&1 != 0 {
+
+	if len(a) <= 0 || len(a)&(len(a)-1) != 0 {
 		panic("length of a and b must be power of 2")
 	}
 
@@ -118,8 +116,6 @@ func (pp *PublicParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affi
 	h := make([]bls12381.G1Affine, len(pp.H))
 	copy(g, pp.G)
 	copy(h, pp.H)
-
-	// cur := len(L) - 1
 
 	// challenge x
 	// x = H(L, R)
