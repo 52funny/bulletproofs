@@ -2,6 +2,7 @@ package bulletproofs_test
 
 import (
 	"math/big"
+	"runtime"
 	"testing"
 
 	"github.com/52funny/bulletproofs"
@@ -12,25 +13,43 @@ import (
 )
 
 func TestNewPublicParameters(t *testing.T) {
-	pp := bulletproofs.NewPublicParameters(1000)
-	assert.Equal(t, 100, len(pp.G))
+	n := 1000
+	a, b := make([]fr.Element, n), make([]fr.Element, n)
+	for i := range len(a) {
+		a[i].SetRandom()
+		b[i].SetRandom()
+	}
+	pp := bulletproofs.NewPublicParameters(n, a, b)
+	assert.Equal(t, n, len(pp.G))
 }
-func TestMultiExp(t *testing.T) {
+
+func BenchmarkMultiExp(bench *testing.B) {
 	n := 100
-	pp := bulletproofs.NewPublicParameters(100)
+	a, b := make([]fr.Element, n), make([]fr.Element, n)
+	pp := bulletproofs.NewPublicParameters(100, a, b)
 	frs := make([]fr.Element, n)
 	for i := range n {
 		frs[i].SetRandom()
 	}
 	// cfg := ecc.
 	cfg := ecc.MultiExpConfig{
-		NbTasks: 4,
+		NbTasks: runtime.NumCPU(),
 	}
-	x, _ := new(bls12381.G1Affine).MultiExp(pp.G[:n], frs[:n], cfg)
-	y := new(bls12381.G1Affine).SetInfinity()
-	for i := range n {
-		y.Add(y, new(bls12381.G1Affine).ScalarMultiplication(&pp.G[i], frs[i].BigInt(new(big.Int))))
-	}
-	assert.Equal(t, x.String(), y.String())
+	bench.ResetTimer()
+	new(bls12381.G1Affine).MultiExp(pp.G[:n], frs[:n], cfg)
+}
 
+func BenchmarkStandardScalarMulti(bench *testing.B) {
+	n := 100
+	a, b := make([]fr.Element, n), make([]fr.Element, n)
+	pp := bulletproofs.NewPublicParameters(100, a, b)
+	frs := make([]fr.Element, n)
+	for i := range n {
+		frs[i].SetRandom()
+	}
+	bench.ResetTimer()
+	sum := bls12381.G1Affine{}
+	for i := range n {
+		sum.Add(&sum, new(bls12381.G1Affine).ScalarMultiplication(&pp.G[i], frs[i].BigInt(new(big.Int))))
+	}
 }

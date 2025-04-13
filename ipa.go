@@ -41,7 +41,7 @@ func (pp *PublicParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381
 		L1, _ := new(bls12381.G1Jac).MultiExp(g[n:2*n], a[0:n], config)
 		L2, _ := new(bls12381.G1Jac).MultiExp(h[0:n], b[n:2*n], config)
 
-		LSum := innerProduct(a[0:n], b[n:2*n])
+		LSum := vecInnerProduct(a[0:n], b[n:2*n])
 
 		L3 := new(bls12381.G1Jac).ScalarMultiplication(new(bls12381.G1Jac).FromAffine(&pp.U), LSum.BigInt(new(big.Int)))
 		L := new(bls12381.G1Jac).FromAffine(new(bls12381.G1Affine).SetInfinity())
@@ -52,7 +52,7 @@ func (pp *PublicParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381
 		R1, _ := new(bls12381.G1Jac).MultiExp(g[0:n], a[n:2*n], config)
 		R2, _ := new(bls12381.G1Jac).MultiExp(h[n:2*n], b[0:n], config)
 
-		RSum := innerProduct(a[n:2*n], b[0:n])
+		RSum := vecInnerProduct(a[n:2*n], b[0:n])
 
 		R3 := new(bls12381.G1Jac).ScalarMultiplication(new(bls12381.G1Jac).FromAffine(&pp.U), RSum.BigInt(new(big.Int)))
 		R := new(bls12381.G1Jac).FromAffine(new(bls12381.G1Affine).SetInfinity())
@@ -108,7 +108,7 @@ func (pp *PublicParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381
 	return LList, RList, a[0], b[0]
 }
 
-func (pp *PublicParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affine, aVec, bVec []fr.Element, a, b fr.Element) bool {
+func (pp *PublicParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affine, P bls12381.G1Affine, a, b fr.Element) bool {
 	if len(L) != len(R) {
 		panic("length of L and R must be equal")
 	}
@@ -123,7 +123,6 @@ func (pp *PublicParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affi
 	x := fr.Element{}
 	n := len(pp.G)
 	sum := new(bls12381.G1Jac).FromAffine(new(bls12381.G1Affine).SetInfinity())
-	P := pp.IPACommitment(aVec, bVec)
 	sum.AddAssign(new(bls12381.G1Jac).FromAffine(&P))
 
 	cur := 0
@@ -181,15 +180,15 @@ func (pp *PublicParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affi
 }
 
 // Computes the perderson commitment for the given vectors a and b.
-func (pp *PublicParameters) IPACommitment(a []fr.Element, b []fr.Element) bls12381.G1Affine {
+func (pp *PublicParameters) IPAPerdersonCommitment(a []fr.Element, b []fr.Element) bls12381.G1Affine {
 	if len(a) != len(b) {
 		panic("length of a and b must be equal")
 	}
 
-	config := ecc.MultiExpConfig{NbTasks: 4}
+	config := ecc.MultiExpConfig{NbTasks: maxGoroutine}
 	l1, _ := new(bls12381.G1Affine).MultiExp(pp.G, a, config)
 	l2, _ := new(bls12381.G1Affine).MultiExp(pp.H, b, config)
-	ipa := innerProduct(a, b)
+	ipa := vecInnerProduct(a, b)
 	l3 := new(bls12381.G1Affine).ScalarMultiplication(&pp.U, ipa.BigInt(new(big.Int)))
 
 	sum := new(bls12381.G1Affine).SetInfinity()
@@ -197,20 +196,4 @@ func (pp *PublicParameters) IPACommitment(a []fr.Element, b []fr.Element) bls123
 	sum.Add(sum, l2)
 	sum.Add(sum, l3)
 	return *sum
-}
-
-// innerProduct computes the inner product of two vectors a and b.
-// the length of a and b must be equal.
-// the result is the sum of a[i] * b[i].
-func innerProduct(a []fr.Element, b []fr.Element) fr.Element {
-	if len(a) != len(b) {
-		panic("length of a and b must be equal")
-	}
-	sum := fr.NewElement(0)
-	for i := range a {
-		t := fr.Element{}
-		t.Mul(&a[i], &b[i])
-		sum.Add(&sum, &t)
-	}
-	return sum
 }

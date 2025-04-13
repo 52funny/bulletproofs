@@ -18,7 +18,7 @@ type PublicParameters struct {
 }
 
 // NewPublicParameters generates public parameters for the ipa protocol.
-func NewPublicParameters(n int) *PublicParameters {
+func NewPublicParameters(n int, a []fr.Element, b []fr.Element) *PublicParameters {
 	g := make([]bls12381.G1Affine, 0, n)
 	h := make([]bls12381.G1Affine, 0, n)
 
