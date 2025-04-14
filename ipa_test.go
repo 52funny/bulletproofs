@@ -15,7 +15,7 @@ func TestIPA(t *testing.T) {
 		aVec[i].SetRandom()
 		bVec[i].SetRandom()
 	}
-	pp := bulletproofs.NewPublicParameters(n, aVec, bVec)
+	pp := bulletproofs.NewIPAParameters(n)
 	P := pp.IPAPerdersonCommitment(aVec, bVec)
 	L, R, a, b := pp.IPAProof(aVec, bVec)
 	res := pp.IPAVerify(L, R, P, a, b)

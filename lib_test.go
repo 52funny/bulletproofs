@@ -19,14 +19,13 @@ func TestNewPublicParameters(t *testing.T) {
 		a[i].SetRandom()
 		b[i].SetRandom()
 	}
-	pp := bulletproofs.NewPublicParameters(n, a, b)
+	pp := bulletproofs.NewIPAParameters(n)
 	assert.Equal(t, n, len(pp.G))
 }
 
 func BenchmarkMultiExp(bench *testing.B) {
 	n := 100
-	a, b := make([]fr.Element, n), make([]fr.Element, n)
-	pp := bulletproofs.NewPublicParameters(100, a, b)
+	pp := bulletproofs.NewIPAParameters(n)
 	frs := make([]fr.Element, n)
 	for i := range n {
 		frs[i].SetRandom()
@@ -41,8 +40,7 @@ func BenchmarkMultiExp(bench *testing.B) {
 
 func BenchmarkStandardScalarMulti(bench *testing.B) {
 	n := 100
-	a, b := make([]fr.Element, n), make([]fr.Element, n)
-	pp := bulletproofs.NewPublicParameters(100, a, b)
+	pp := bulletproofs.NewIPAParameters(100)
 	frs := make([]fr.Element, n)
 	for i := range n {
 		frs[i].SetRandom()

@@ -4,13 +4,61 @@ import (
 	"crypto/sha256"
 	"math/big"
 	"math/bits"
+	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 )
 
-func (pp *PublicParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381.G1Affine, []bls12381.G1Affine, fr.Element, fr.Element) {
+type IPAParameters struct {
+	G []bls12381.G1Affine
+	H []bls12381.G1Affine
+	U bls12381.G1Affine
+	N int
+}
+
+// NewIPAParameters generates public parameters for the ipa protocol.
+func NewIPAParameters(n int) *IPAParameters {
+	g := make([]bls12381.G1Affine, 0, n)
+	h := make([]bls12381.G1Affine, 0, n)
+
+	wait := new(sync.WaitGroup)
+	worker := func(target int) {
+		defer wait.Done()
+		for range n {
+			// generate random number
+			r := fr.Element{}
+			r.SetRandom()
+			random := bls12381.G1Jac{}
+			random.ScalarMultiplicationBase(r.BigInt(new(big.Int)))
+			switch target {
+			case 0:
+				g = append(g, *new(bls12381.G1Affine).FromJacobian(&random))
+			case 1:
+				h = append(h, *new(bls12381.G1Affine).FromJacobian(&random))
+			}
+		}
+	}
+
+	wait.Add(2)
+	go worker(0)
+	go worker(1)
+	wait.Wait()
+
+	r := fr.Element{}
+	r.SetRandom()
+	u := new(bls12381.G1Affine).FromJacobian(new(bls12381.G1Jac).ScalarMultiplicationBase(r.BigInt(new(big.Int))))
+
+	return &IPAParameters{
+		G: g,
+		H: h,
+		N: n,
+		U: *u,
+	}
+}
+
+func (pp *IPAParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381.G1Affine, []bls12381.G1Affine, fr.Element, fr.Element) {
 	if len(a) != len(b) {
 		panic("length of a and b must be equal")
 	}
@@ -108,7 +156,7 @@ func (pp *PublicParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381
 	return LList, RList, a[0], b[0]
 }
 
-func (pp *PublicParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affine, P bls12381.G1Affine, a, b fr.Element) bool {
+func (pp *IPAParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affine, P bls12381.G1Affine, a, b fr.Element) bool {
 	if len(L) != len(R) {
 		panic("length of L and R must be equal")
 	}
@@ -180,7 +228,7 @@ func (pp *PublicParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affi
 }
 
 // Computes the perderson commitment for the given vectors a and b.
-func (pp *PublicParameters) IPAPerdersonCommitment(a []fr.Element, b []fr.Element) bls12381.G1Affine {
+func (pp *IPAParameters) IPAPerdersonCommitment(a []fr.Element, b []fr.Element) bls12381.G1Affine {
 	if len(a) != len(b) {
 		panic("length of a and b must be equal")
 	}
