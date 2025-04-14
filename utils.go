@@ -92,3 +92,14 @@ func vecScalarMul(a []fr.Element, b fr.Element) []fr.Element {
 	}
 	return c
 }
+
+// newVecofKN computes a new vector of length n where each element is k^i.
+func newVecofKN(k fr.Element, n int) []fr.Element {
+	c := make([]fr.Element, n)
+	prod := fr.NewElement(1)
+	for i := range c {
+		prod.Mul(&prod, &k)
+		c[i].Set(&prod)
+	}
+	return c
+}
