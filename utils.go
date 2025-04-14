@@ -98,8 +98,8 @@ func newVecofKN(k fr.Element, n int) []fr.Element {
 	c := make([]fr.Element, n)
 	prod := fr.NewElement(1)
 	for i := range c {
-		prod.Mul(&prod, &k)
 		c[i].Set(&prod)
+		prod.Mul(&prod, &k)
 	}
 	return c
 }

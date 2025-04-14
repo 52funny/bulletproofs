@@ -22,4 +22,10 @@ func TestNewRangeProver(t *testing.T) {
 		sub.Sub(&al[i], &ar[i])
 		assert.Equal(t, true, sub.Equal(&one))
 	}
+
+	two := fr.NewElement(2)
+	twoVec := newVecofKN(two, n)
+	sum := vecInnerProduct(twoVec, al)
+
+	assert.Equal(t, true, sum.Equal(&x))
 }
