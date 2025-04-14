@@ -29,3 +29,17 @@ func TestNewRangeProver(t *testing.T) {
 
 	assert.Equal(t, true, sum.Equal(&x))
 }
+
+func TestRangeProof(t *testing.T) {
+	n := 2
+	dealer := RangeProofDealerSetup(n)
+	x := fr.Element{}
+	x.SetOne()
+	// x.SetRandom()
+	prover := NewRangeProver(dealer, x)
+
+	proof := prover.Prove()
+	verifier := NewRangeVerify(dealer)
+	ok := verifier.Verify(proof)
+	assert.Equal(t, true, ok)
+}

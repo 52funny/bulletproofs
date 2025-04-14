@@ -58,7 +58,7 @@ func NewIPAParameters(n int) *IPAParameters {
 	}
 }
 
-func (pp *IPAParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381.G1Affine, []bls12381.G1Affine, fr.Element, fr.Element) {
+func (pp *IPAParameters) IPAProof(G, H []bls12381.G1Affine, a []fr.Element, b []fr.Element) ([]bls12381.G1Affine, []bls12381.G1Affine, fr.Element, fr.Element) {
 	if len(a) != len(b) {
 		panic("length of a and b must be equal")
 	}
@@ -73,9 +73,9 @@ func (pp *IPAParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381.G1
 	copy(bCopy, b)
 	a, b = aCopy, bCopy
 
-	g, h := make([]bls12381.G1Affine, len(pp.G)), make([]bls12381.G1Affine, len(pp.H))
-	copy(g, pp.G)
-	copy(h, pp.H)
+	g, h := make([]bls12381.G1Affine, len(G)), make([]bls12381.G1Affine, len(H))
+	copy(g, G)
+	copy(h, H)
 
 	config := ecc.MultiExpConfig{NbTasks: 8}
 	n := len(a)
@@ -156,20 +156,20 @@ func (pp *IPAParameters) IPAProof(a []fr.Element, b []fr.Element) ([]bls12381.G1
 	return LList, RList, a[0], b[0]
 }
 
-func (pp *IPAParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affine, P bls12381.G1Affine, a, b fr.Element) bool {
+func (pp *IPAParameters) IPAVerify(G, H []bls12381.G1Affine, L []bls12381.G1Affine, R []bls12381.G1Affine, P bls12381.G1Affine, a, b fr.Element) bool {
 	if len(L) != len(R) {
 		panic("length of L and R must be equal")
 	}
-	g := make([]bls12381.G1Affine, len(pp.G))
-	h := make([]bls12381.G1Affine, len(pp.H))
-	copy(g, pp.G)
-	copy(h, pp.H)
+	g := make([]bls12381.G1Affine, len(G))
+	h := make([]bls12381.G1Affine, len(H))
+	copy(g, G)
+	copy(h, H)
 
 	// challenge x
 	// x = H(L, R)
 	xHash := sha256.New()
 	x := fr.Element{}
-	n := len(pp.G)
+	n := len(G)
 	sum := new(bls12381.G1Jac).FromAffine(new(bls12381.G1Affine).SetInfinity())
 	sum.AddAssign(new(bls12381.G1Jac).FromAffine(&P))
 
@@ -228,14 +228,14 @@ func (pp *IPAParameters) IPAVerify(L []bls12381.G1Affine, R []bls12381.G1Affine,
 }
 
 // Computes the perderson commitment for the given vectors a and b.
-func (pp *IPAParameters) IPAPerdersonCommitment(a []fr.Element, b []fr.Element) bls12381.G1Affine {
+func (pp *IPAParameters) IPAPerdersonCommitment(G, H []bls12381.G1Affine, a []fr.Element, b []fr.Element) bls12381.G1Affine {
 	if len(a) != len(b) {
 		panic("length of a and b must be equal")
 	}
 
 	config := ecc.MultiExpConfig{NbTasks: maxGoroutine}
-	l1, _ := new(bls12381.G1Affine).MultiExp(pp.G, a, config)
-	l2, _ := new(bls12381.G1Affine).MultiExp(pp.H, b, config)
+	l1, _ := new(bls12381.G1Affine).MultiExp(G, a, config)
+	l2, _ := new(bls12381.G1Affine).MultiExp(H, b, config)
 	ipa := vecInnerProduct(a, b)
 	l3 := new(bls12381.G1Affine).ScalarMultiplication(&pp.U, ipa.BigInt(new(big.Int)))
 

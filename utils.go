@@ -57,15 +57,6 @@ func vecSub(a []fr.Element, b []fr.Element) []fr.Element {
 	return c
 }
 
-// vecScalarHadamardProduct computes the Hadamard product of a vector a and the scalar b.
-func vecScalarHadamardProduct(a []fr.Element, b fr.Element) []fr.Element {
-	c := make([]fr.Element, len(a))
-	for i := range a {
-		c[i].Mul(&a[i], &b)
-	}
-	return c
-}
-
 // vecScalarSub computes the new vector c = a_i - b.
 func vecScalarSub(a []fr.Element, b fr.Element) []fr.Element {
 	c := make([]fr.Element, len(a))
@@ -100,6 +91,15 @@ func newVecofKN(k fr.Element, n int) []fr.Element {
 	for i := range c {
 		c[i].Set(&prod)
 		prod.Mul(&prod, &k)
+	}
+	return c
+}
+
+// newRandomVec generates a new vector of length n where each element is a random number.
+func newRandomVec(n int) []fr.Element {
+	c := make([]fr.Element, n)
+	for i := range c {
+		c[i].SetRandom()
 	}
 	return c
 }
