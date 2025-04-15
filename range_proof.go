@@ -437,7 +437,7 @@ func (verifier *RangeVerify) Verify(proof RangeProverProof) bool {
 	P.Add(&P, uC)
 
 	// todo: calculate P
-	ok2 := verifier.dealer.IPA.IPAVerify(verifier.dealer.IPA.G, hPrime, proof.L, proof.R, P, proof.AVecCompress, proof.BVecCompress)
+	ok2 := verifier.dealer.IPA.IPAFastVerify(verifier.dealer.IPA.G, hPrime, proof.L, proof.R, P, proof.AVecCompress, proof.BVecCompress)
 
 	return ok1 && ok2
 }

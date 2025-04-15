@@ -227,6 +227,69 @@ func (pp *IPAParameters) IPAVerify(G, H []bls12381.G1Affine, L []bls12381.G1Affi
 	return PPrime.Equal(sum)
 }
 
+// Use multi-exponentiation to accelerate the verification process.
+func (pp *IPAParameters) IPAFastVerify(G, H []bls12381.G1Affine, L, R []bls12381.G1Affine, P bls12381.G1Affine, a, b fr.Element) bool {
+	logN, n := len(L), pp.N
+
+	x := make([]fr.Element, logN)
+	for i := range logN {
+		hash := sha256.New()
+		LBytes := L[i].Bytes()
+		RBytes := R[i].Bytes()
+		hash.Write(LBytes[:])
+		hash.Write(RBytes[:])
+		x[i].SetBytes(hash.Sum(nil))
+	}
+
+	s := make([]fr.Element, n)
+	for i := range n {
+		sVal := fr.One()
+		for j, xVal := range x {
+			if (i >> (logN - j - 1) & 1) == 1 {
+				sVal.Mul(&sVal, &xVal)
+			} else {
+				xInv := fr.Element{}
+				xInv.Inverse(&xVal)
+				sVal.Mul(&sVal, &xInv)
+			}
+		}
+		s[i] = sVal
+	}
+
+	sInv := make([]fr.Element, pp.N)
+	for i := range n {
+		sInv[i].Inverse(&s[i])
+	}
+
+	left, right := bls12381.G1Affine{}, bls12381.G1Affine{}
+	left1, left2, left3 := bls12381.G1Affine{}, bls12381.G1Affine{}, bls12381.G1Affine{}
+	right1, right2 := bls12381.G1Affine{}, bls12381.G1Affine{}
+
+	left1.MultiExp(G, s, multiExpCfg)
+	left1.ScalarMultiplication(&left1, a.BigInt(new(big.Int)))
+	left2.MultiExp(H, sInv, multiExpCfg)
+	left2.ScalarMultiplication(&left2, b.BigInt(new(big.Int)))
+	left3.ScalarMultiplication(&pp.U, new(fr.Element).Mul(&a, &b).BigInt(new(big.Int)))
+	left.Add(&left1, &left2)
+	left.Add(&left, &left3)
+
+	xSquare := make([]fr.Element, logN)
+	for i := range logN {
+		xSquare[i].Square(&x[i])
+	}
+	xInvSquare := make([]fr.Element, logN)
+	for i := range logN {
+		xInvSquare[i].Inverse(&xSquare[i])
+	}
+
+	right1.MultiExp(L, xSquare, multiExpCfg)
+	right2.MultiExp(R, xInvSquare, multiExpCfg)
+	right.Add(&right1, &right2)
+	right.Add(&right, &P)
+
+	return left.Equal(&right)
+}
+
 // Computes the perderson commitment for the given vectors a and b.
 func (pp *IPAParameters) IPAPerdersonCommitment(G, H []bls12381.G1Affine, a []fr.Element, b []fr.Element) bls12381.G1Affine {
 	if len(a) != len(b) {
