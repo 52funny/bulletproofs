@@ -1,6 +1,8 @@
 package bulletproofs
 
-import "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+import (
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+)
 
 // vecInnerProduct computes the inner product of two vectors a and b.
 // the length of a and b must be equal.
@@ -101,5 +103,18 @@ func newRandomVec(n int) []fr.Element {
 	for i := range c {
 		c[i].SetRandom()
 	}
+	return c
+}
+
+// return vector like 0 || 2^n || 0
+func newVecWithShift(a []fr.Element, n, m, k int) []fr.Element {
+	if len(a) != n {
+		panic("length of a must be equal to n")
+	}
+	if k < 0 || k >= m {
+		panic("k must be in [0, m)")
+	}
+	c := make([]fr.Element, n*m)
+	copy(c[k*n:(k+1)*n], a)
 	return c
 }
