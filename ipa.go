@@ -1,10 +1,11 @@
 package bulletproofs
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"io"
 	"math/big"
 	"math/bits"
-	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -23,28 +24,36 @@ func NewIPAParameters(n int) *IPAParameters {
 	g := make([]bls12381.G1Affine, 0, n)
 	h := make([]bls12381.G1Affine, 0, n)
 
-	wait := new(sync.WaitGroup)
-	worker := func(target int) {
-		defer wait.Done()
-		for range n {
-			// generate random number
-			r := fr.Element{}
-			r.SetRandom()
-			random := bls12381.G1Jac{}
-			random.ScalarMultiplicationBase(r.BigInt(new(big.Int)))
-			switch target {
-			case 0:
-				g = append(g, *new(bls12381.G1Affine).FromJacobian(&random))
-			case 1:
-				h = append(h, *new(bls12381.G1Affine).FromJacobian(&random))
+	job := make(chan struct{}, 2*n)
+	producer := make(chan bls12381.G1Affine, maxGoroutine)
+
+	worker := func() {
+		nonce := make([]byte, 32)
+		for range job {
+			io.ReadFull(rand.Reader, nonce)
+			g, err := bls12381.HashToG1(nonce, []byte("bulletproofs-tag"))
+			if err != nil {
+				panic(err)
 			}
+			producer <- g
 		}
 	}
 
-	wait.Add(2)
-	go worker(0)
-	go worker(1)
-	wait.Wait()
+	for range maxGoroutine {
+		go worker()
+	}
+
+	for range 2 * n {
+		job <- struct{}{}
+	}
+
+	for range n {
+		g = append(g, <-producer)
+	}
+
+	for range n {
+		h = append(h, <-producer)
+	}
 
 	r := fr.Element{}
 	r.SetRandom()
